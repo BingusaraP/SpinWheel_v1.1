@@ -1,0 +1,716 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Fitsmiles Prize Wheel</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Montserrat:wght@400;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.5.1/dist/confetti.browser.min.js"></script>
+  <style>
+    /* RESET & BASE */
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { height: 100%; width: 100%; }
+    body { background: radial-gradient(circle, #ffffff, #f2f2f2); font-family: 'Montserrat', sans-serif; display: flex; align-items: center; justify-content: center; padding: 10px; overflow: hidden; }
+    /* MAIN CONTAINER */
+    .container { background: #F52F57; border-radius: 12px; padding: 30px 20px 40px; text-align: center; box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15); max-width: 650px; width: 100%; height: auto; max-height: 95vh; position: relative; display: flex; flex-direction: column; align-items: center; transition: all 0.3s ease; }
+    /* FULLSCREEN BUTTON */
+    #fullscreen-btn { position: absolute; top: 15px; right: 15px; background: rgba(255, 255, 255, 0.2); border: none; color: white; padding: 8px; border-radius: 50%; cursor: pointer; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; transition: background-color 0.3s ease; z-index: 20; }
+    #fullscreen-btn:hover { background: rgba(255, 255, 255, 0.4); }
+    #fullscreen-btn svg { width: 18px; height: 18px; fill: currentColor; }
+    #admin-btn:hover { background: rgba(255, 255, 255, 0.4); }
+    /* HEADER CONTENT */
+    .header-content { width: 100%; text-align: center; margin-bottom: 20px; padding-top: 30px; transition: all 0.3s ease; flex-shrink: 0; }
+    /* WHEEL CONTENT */
+    .wheel-content { width: 100%; display: flex; flex-direction: column; align-items: center; transition: all 0.3s ease; flex-grow: 1; min-height: 0; }
+    /* LOGO & H1 */
+    .logo { margin-bottom: 15px; line-height: 0; }
+    .logo img { display: block; margin: 0 auto; max-height: 50px; width: auto; transition: max-height 0.3s ease; }
+    h1 { font-family: 'Bebas Neue', cursive; font-size: 50px; color: #ffffff; margin-bottom: 10px; text-shadow: 2px 2px 0px rgba(0, 0, 0, 0.2); transition: font-size 0.3s ease; line-height: 1.1; }
+    /* ARROW */
+    .arrow-wrapper { text-align: center; margin-bottom: 10px; width: 100%; }
+    .arrow { display: inline-block; width: 0; height: 0; border-left: 20px solid transparent; border-right: 20px solid transparent; border-bottom: 40px solid #ffffff; transform: rotate(180deg); transition: all 0.3s ease; }
+    /* CANVAS */
+    .canvas-container { width: 100%; max-width: 500px; margin: 0 auto; transition: max-width 0.3s ease; flex-grow: 1; display: flex; align-items: center; justify-content: center; min-height: 0; }
+    .wheel-wrapper { position: relative; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; }
+    #canvas { display: block; border: 3px solid #ddd; border-radius: 50%; }
+    #canvas.spinning { animation: pulse 1s infinite alternate; }
+    @keyframes pulse { from { opacity: 0.95; } to { opacity: 1; } }
+    /* SPIN BUTTON */
+    #spin { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 80px; height: 80px; background-color: transparent; border-radius: 50%; cursor: pointer; transition: all 0.15s ease; border: none; box-shadow: 0 4px 8px rgba(0,0,0,0.2); z-index: 10; display: flex; align-items: center; justify-content: center; padding: 0; overflow: hidden; }
+    #spin img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    #spin:hover { transform: translate(-50%, -50%) scale(1.05); }
+    #spin:disabled { opacity: 0.6; cursor: not-allowed; }
+    #spin.spinning { background-image: none; border: 4px solid rgba(255, 255, 255, 0.3); border-radius: 50%; border-top: 4px solid #ffffff; width: 50px; height: 50px; animation: spin 1s linear infinite; background-color: transparent; }
+    #spin.spinning img { display: none; }
+    @keyframes spin { 0% { transform: translate(-50%, -50%) rotate(0deg); } 100% { transform: translate(-50%, -50%) rotate(360deg); } }
+    /* MODAL */
+    .modal { display: none; position: fixed; z-index: 100; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.65); align-items: center; justify-content: center; }
+    .modal-content { background-color: #fff; border-radius: 12px; padding: 30px; text-align: center; box-shadow: 0 8px 20px rgba(0,0,0,0.3); max-width: 400px; width: 80%; position: relative; }
+    .modal-content h2 { font-family: 'Bebas Neue', cursive; font-size: 44px; margin-bottom: 20px; color: #060606; }
+    .modal-content p { font-size: 20px; color: #333; margin-bottom: 20px; }
+    .close { position: absolute; right: 15px; top: 10px; font-size: 28px; font-weight: bold; color: #888; cursor: pointer; transition: color 0.3s ease; }
+    .close:hover { color: #060606; }
+    /* LANDSCAPE (Non-Fullscreen) */
+    @media (min-width: 768px) and (min-height: 500px) {
+        .container:not(body:fullscreen .container) { flex-direction: row; align-items: center; justify-content: space-around; padding: 40px; max-width: 1000px; height: auto; max-height: 90vh; }
+        .header-content:not(body:fullscreen .header-content) { flex: 1 1 40%; padding-right: 30px; margin-bottom: 0; padding-top: 0; }
+        .wheel-content:not(body:fullscreen .wheel-content) { flex: 1 1 60%; max-width: 50%; height: 100%; }
+        .logo:not(body:fullscreen .logo) img { max-height: 60px; }
+        h1:not(body:fullscreen h1) { font-size: 60px; }
+        #spin:not(body:fullscreen #spin) { width: 100px; height: 100px; }
+        #spin.spinning:not(body:fullscreen #spin.spinning) { width: 60px; height: 60px; }
+        #fullscreen-btn:not(body:fullscreen #fullscreen-btn) { top: 20px; right: 20px; }
+    }
+    /* FULLSCREEN */
+    body:fullscreen .container { max-width: none; height: 100%; width: 100%; border-radius: 0; padding: 2vmin; flex-direction: row; justify-content: center; align-items: center; }
+    body:fullscreen .header-content { padding: 0 2vmin; margin-bottom: 0; flex: 0 1 35%; height: 100%; display: flex; flex-direction: column; justify-content: center; align-items: center; padding-top: 0; }
+    body:fullscreen .wheel-content { flex: 1 1 65%; max-width: none; max-height: none; height: 100%; width: 100%; justify-content: center; }
+    body:fullscreen .canvas-container { max-width: none; width: 100%; height: 100%; }
+    body:fullscreen .logo img { max-height: 10vh; }
+    body:fullscreen h1 { font-size: min(7vh, 70px); }
+    body:fullscreen .arrow { border-left-width: 3vmin; border-right-width: 3vmin; border-bottom-width: 6vmin; }
+    body:fullscreen #spin { width: clamp(80px, 18vmin, 120px); height: clamp(80px, 18vmin, 120px); }
+    body:fullscreen #spin.spinning { width: clamp(50px, 12vmin, 80px); height: clamp(50px, 12vmin, 80px); }
+    body:fullscreen #fullscreen-btn { top: 20px; right: 20px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <button id="fullscreen-btn" title="Toggle Fullscreen"></button>
+    
+    <!-- Admin Panel Access Button -->
+    <button id="admin-btn" title="Admin Panel" style="position: absolute; top: 15px; left: 15px; background: rgba(255, 255, 255, 0.2); border: none; color: white; padding: 8px; border-radius: 50%; cursor: pointer; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; transition: background-color 0.3s ease; z-index: 20; font-size: 18px; text-decoration: none;" onclick="window.open('admin.html', '_blank')">⚙️</button>
+
+    <div class="header-content">
+      <div class="logo">
+          <img src="fitsmile_logo.png" alt="Fitsmiles Logo"
+               onerror="this.parentElement.innerHTML = '<div style=\'font-family: Bebas Neue, cursive; color: white; font-size: 48px;\'>' + (localStorage.getItem('wheelOrgName') || 'FITSMILES') + '</div>';">
+      </div>
+      <h1 id="wheelTitle">Prize Wheel</h1>
+    </div>
+
+    <div class="wheel-content">
+      <div class="arrow-wrapper">
+        <div class="arrow"></div>
+      </div>
+      <div class="canvas-container">
+        <div class="wheel-wrapper">
+          <canvas id="canvas"></canvas>
+          <button id="spin">
+            <img src="play_button.png"
+                 alt="Spin the Wheel"
+                 onerror="this.style.display='none'; this.parentElement.innerHTML += '<span style=\'font-size:12px; color: black;\'>Spin!</span>';" >
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="modal" class="modal">
+    <div class="modal-content">
+      <span class="close" id="close">&times;</span>
+      <h2 id="modalHeader">Congratulations!</h2>
+      <p id="winnerText"></p>
+    </div>
+  </div>
+
+  <audio id="spinSound" src="spin-sound.mp3" preload="auto"></audio>
+  <audio id="winSound" src="win-sound.mp3" preload="auto"></audio>
+  <audio id="lostSound" src="lost-sound.mp3" preload="auto"></audio>
+
+  <script>
+    // --- Wheel Configuration ---
+    // Load segments and colors from localStorage (set by admin panel)
+    function loadWheelConfiguration() {
+      const savedSegments = localStorage.getItem('wheelSegments');
+      const savedColors = localStorage.getItem('wheelColors');
+      const savedOutcomes = localStorage.getItem('wheelOutcomes');
+      
+      if (savedSegments && savedColors) {
+        return {
+          segments: JSON.parse(savedSegments),
+          colors: JSON.parse(savedColors),
+          outcomes: savedOutcomes ? JSON.parse(savedOutcomes) : []
+        };
+      } else {
+        // Default configuration: 8 segments (Fitsmiles + losing only)
+        return {
+          segments: [
+            '5 Fitsmiles', 'Sorry', '10 Fitsmiles', 'Sorry',
+            '15 Fitsmiles', 'Sorry', '20 Fitsmiles', 'Sorry'
+          ],
+          colors: [
+            '#F52F57', '#060606', '#F52F57', '#060606',
+            '#F52F57', '#060606', '#F52F57', '#060606'
+          ],
+          outcomes: [
+            'fitsmiles', 'fail', 'fitsmiles', 'fail',
+            'fitsmiles', 'fail', 'fitsmiles', 'fail'
+          ]
+        };
+      }
+    }
+
+    const wheelConfig = loadWheelConfiguration();
+    const segments = wheelConfig.segments;
+    const colors = wheelConfig.colors;
+    const outcomes = wheelConfig.outcomes;
+    
+    // Function to reload configuration (useful if admin panel updates settings)
+    function reloadConfiguration() {
+      const newConfig = loadWheelConfiguration();
+      
+      // Update segments and colors if they've changed
+      if (JSON.stringify(newConfig.segments) !== JSON.stringify(segments) || 
+          JSON.stringify(newConfig.colors) !== JSON.stringify(colors) ||
+          JSON.stringify(newConfig.outcomes) !== JSON.stringify(outcomes)) {
+        
+        // Update the arrays (note: these are const, so we need to reassign the global variables)
+        window.segments = newConfig.segments;
+        window.colors = newConfig.colors;
+        window.outcomes = newConfig.outcomes;
+        
+        // Redraw the wheel with new configuration
+        drawRouletteWheel();
+      }
+      
+      // Update title if changed
+      const customTitle = localStorage.getItem('wheelTitle');
+      if (customTitle && document.getElementById('wheelTitle').textContent !== customTitle) {
+        document.getElementById('wheelTitle').textContent = customTitle;
+        document.title = 'Fitsmiles ' + customTitle;
+      }
+    }
+
+    // Make segments, colors, and outcomes globally accessible for dynamic updates
+    window.segments = segments;
+    window.colors = colors;
+    window.outcomes = outcomes;
+    
+    // Listen for storage changes (when admin panel updates settings)
+    window.addEventListener('storage', function(e) {
+      if (e.key && (e.key.startsWith('wheel') || e.key.startsWith('segments') || e.key.startsWith('colors'))) {
+        reloadConfiguration();
+      }
+    });
+    
+    // Also check for changes every 5 seconds in case the admin panel is on the same origin
+    setInterval(reloadConfiguration, 5000);
+    const canvas = document.getElementById("canvas");
+    const ctx = canvas.getContext("2d");
+    let outsideRadius, insideRadius, textRadius, arc, startAngle = 0, displaySize;
+    let spinTimeout = null, spinAngleStart = 10, spinTime = 0, spinTimeTotal = 0;
+    const spinSound = document.getElementById("spinSound");
+    const winSound = document.getElementById("winSound");
+    const lostSound = document.getElementById("lostSound");
+    const fullscreenBtn = document.getElementById('fullscreen-btn');
+    const elem = document.documentElement;
+
+    /* RESPONSIVE CANVAS SIZING & HiDPI SCALING */
+    function updateCanvasSize() {
+        const canvasContainer = document.querySelector(".canvas-container");
+        if (!canvasContainer) { console.error("Canvas container not found!"); return; }
+        const isFullscreen = document.fullscreenElement || document.webkitFullscreenElement || document.msFullscreenElement;
+        let baseSize;
+        const availableWidth = canvasContainer.clientWidth;
+        const availableHeight = canvasContainer.clientHeight;
+
+        if (availableWidth > 0 && availableHeight > 0) {
+            if (isFullscreen) { baseSize = Math.min(availableWidth, availableHeight) * 0.95; }
+            else { baseSize = Math.min(availableWidth, window.innerHeight * 0.7); }
+        } else {
+            baseSize = Math.min(window.innerWidth, window.innerHeight) * (isFullscreen ? 0.6 : 0.5);
+        }
+        displaySize = Math.max(Math.floor(baseSize), 150);
+        const dpr = window.devicePixelRatio || 1;
+        canvas.width = displaySize * dpr;
+        canvas.height = displaySize * dpr;
+        canvas.style.width = displaySize + 'px';
+        canvas.style.height = displaySize + 'px';
+        outsideRadius = displaySize / 2 - (displaySize * 0.02);
+        insideRadius = displaySize / 5;
+        textRadius = outsideRadius * 0.70;
+        arc = Math.PI * 2 / segments.length;
+        drawRouletteWheel();
+    }
+
+    /* Helper: Draw single line of curved text */
+    function drawSingleCurvedLine(ctx, text, centerX, centerY, radius, centralAngle, currentDisplaySize, arcWidth) {
+        try {
+            const fontSize = Math.max(10, Math.floor(currentDisplaySize / 38));
+            ctx.font = `bold ${fontSize}px Montserrat`;
+
+            // Text color defaults to white
+            ctx.fillStyle = "#fff";
+            ctx.textBaseline = "middle";
+
+            const maxTextWidth = arcWidth * radius * 0.9;
+            let adjustedText = text;
+            let textWidth = ctx.measureText(adjustedText).width;
+
+            while (textWidth > maxTextWidth && adjustedText.length > 5) {
+                 adjustedText = adjustedText.slice(0, -4) + "...";
+                 textWidth = ctx.measureText(adjustedText).width;
+            }
+
+            if (radius <= 0 || isNaN(radius) || isNaN(centralAngle)) return;
+            const totalTextAngle = textWidth / radius;
+            if (isNaN(totalTextAngle)) return;
+            let currentCharacterAngle = centralAngle - totalTextAngle / 2;
+            if (isNaN(currentCharacterAngle)) return;
+
+            for (let i = 0; i < adjustedText.length; i++) {
+                const letter = adjustedText[i];
+                const letterWidth = ctx.measureText(letter).width;
+                const letterAngle = radius > 0 ? letterWidth / radius : 0;
+                const angleForThisCharCenter = currentCharacterAngle + letterAngle / 2;
+                if (isNaN(angleForThisCharCenter)) continue;
+                const x = centerX + radius * Math.cos(angleForThisCharCenter);
+                const y = centerY + radius * Math.sin(angleForThisCharCenter);
+                if (isNaN(x) || isNaN(y)) continue;
+                ctx.save();
+                ctx.translate(x, y);
+                ctx.rotate(angleForThisCharCenter + Math.PI / 2);
+                ctx.textAlign = "center";
+                ctx.fillText(letter, 0, 0);
+                ctx.restore();
+                currentCharacterAngle += letterAngle;
+                if (isNaN(currentCharacterAngle)) break;
+            }
+        } catch (error) { console.error("Error during drawSingleCurvedLine:", error, {text, radius, centralAngle}); }
+    }
+
+    /* Helper: Wrap text into max 2 lines with ellipsis */
+    function wrapTextIntoTwoLines(ctx, text, maxWidth) {
+        try {
+            const words = (text || '').toString().trim().split(/\s+/);
+            if (words.length === 0) return ['', ''];
+
+            // If the whole text fits in one line, return it as line1
+            if (ctx.measureText(text).width <= maxWidth) {
+                return [text, ''];
+            }
+
+            // Build line1 word by word
+            let line1 = '';
+            let i = 0;
+            for (; i < words.length; i++) {
+                const test = line1 ? (line1 + ' ' + words[i]) : words[i];
+                if (ctx.measureText(test).width <= maxWidth) {
+                    line1 = test;
+                } else {
+                    break;
+                }
+            }
+
+            // Remaining words for line2
+            let line2 = words.slice(i).join(' ');
+            if (!line2) {
+                return [line1, ''];
+            }
+
+            // If line2 too wide, trim and add ellipsis
+            if (ctx.measureText(line2).width > maxWidth) {
+                let truncated = line2;
+                while (truncated.length > 0 && ctx.measureText(truncated + '...').width > maxWidth) {
+                    truncated = truncated.slice(0, -1);
+                }
+                line2 = truncated + (truncated.length < line2.length ? '...' : '');
+            }
+            return [line1, line2];
+        } catch (e) {
+            console.error('Error in wrapTextIntoTwoLines:', e);
+            return [text || '', ''];
+        }
+    }
+
+    /* Main function to draw text (handles multi-line case with max 2 lines) */
+    function drawCurvedText(ctx, text, centerX, centerY, baseRadius, centralAngle, currentDisplaySize, arcWidth) {
+       try {
+            ctx.textBaseline = 'middle';
+            const fontSize = Math.max(10, Math.floor(currentDisplaySize / 38));
+            ctx.font = `bold ${fontSize}px Montserrat`;
+
+            // Two-line layout radii
+            const radius1 = Math.max(1, baseRadius + fontSize * 0.65);
+            const radius2 = Math.max(1, baseRadius - fontSize * 0.65);
+
+            // Use the stricter width so both lines fit their arcs
+            const maxWidth1 = arcWidth * radius1 * 0.9;
+            const maxWidth2 = arcWidth * radius2 * 0.9;
+            const targetWidth = Math.min(maxWidth1, maxWidth2);
+
+            const [line1, line2] = wrapTextIntoTwoLines(ctx, text, targetWidth);
+
+            if (line2 && line2.trim().length > 0) {
+                // Draw two lines
+                drawSingleCurvedLine(ctx, line1, centerX, centerY, radius1, centralAngle, currentDisplaySize, arcWidth);
+                drawSingleCurvedLine(ctx, line2, centerX, centerY, radius2, centralAngle, currentDisplaySize, arcWidth);
+            } else {
+                // Single line (slightly inward for better centering)
+                drawSingleCurvedLine(ctx, line1, centerX, centerY, baseRadius - fontSize * 0.65, centralAngle, currentDisplaySize, arcWidth);
+            }
+       } catch (error) { console.error('Error during drawCurvedText:', error, {text, baseRadius, centralAngle}); }
+    }
+
+
+    /* DRAW THE PRIZE WHEEL */
+    function drawRouletteWheel() {
+      try {
+          if (!displaySize || displaySize <= 0 || !ctx) { console.warn("Wheel dimensions or context not ready for drawing."); return; }
+          const dpr = window.devicePixelRatio || 1;
+          const centerX = displaySize / 2;
+          const centerY = displaySize / 2;
+          if (isNaN(centerX) || isNaN(centerY) || isNaN(outsideRadius) || isNaN(insideRadius) || isNaN(arc) || isNaN(textRadius)) {
+              console.error("Invalid dimensions/parameters for drawing wheel:", {displaySize, centerX, centerY, outsideRadius, insideRadius, arc, textRadius});
+              return;
+          }
+
+          ctx.clearRect(0, 0, canvas.width, canvas.height);
+          ctx.save();
+          ctx.scale(dpr, dpr);
+          ctx.strokeStyle = "#fff";
+          ctx.lineWidth = 2;
+
+          for (let i = 0; i < window.segments.length; i++) {
+            const angle = startAngle + i * arc;
+            if (isNaN(angle)) { console.error(`Invalid angle in draw loop (segment ${i}):`, angle); continue; }
+
+            ctx.fillStyle = window.colors[i % window.colors.length];
+            ctx.beginPath();
+            ctx.arc(centerX, centerY, outsideRadius, angle, angle + arc, false);
+            ctx.arc(centerX, centerY, insideRadius, angle + arc, angle, true);
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
+
+            const midAngle = angle + arc / 2;
+            if (isNaN(midAngle)) { console.error(`Invalid midAngle in draw loop (segment ${i}):`, midAngle); continue; }
+
+            // Always draw text
+            drawCurvedText(ctx, window.segments[i], centerX, centerY, textRadius, midAngle, displaySize, arc);
+          }
+          ctx.restore();
+      } catch (error) { console.error("Error during drawRouletteWheel:", error); }
+    }
+
+    /* SPIN THE WHEEL ACTION */
+    function spin() {
+        console.log("spin() function called.");
+        try {
+            const spinButton = document.getElementById("spin");
+            const canvasElement = document.getElementById("canvas");
+            if (!spinButton || !canvasElement) { console.error("Spin/Canvas element not found"); return; }
+
+            spinButton.disabled = true;
+            spinButton.classList.add("spinning");
+            canvasElement.classList.add("spinning");
+            spinAngleStart = Math.random() * 10 + 10;
+            spinTime = 0;
+            
+            // Get configurable spin duration (default 7 seconds, convert to milliseconds and add base time)
+            const configuredDuration = parseInt(localStorage.getItem('wheelSpinDuration') || '7');
+            spinTimeTotal = configuredDuration * 1000 + 6900; // Base time + configured additional time
+
+            // Check if sounds are enabled
+            const soundsEnabled = localStorage.getItem('wheelEnableSounds') !== 'false';
+            if (soundsEnabled && spinSound && typeof spinSound.play === 'function') {
+                 spinSound.currentTime = 0;
+                 spinSound.play().catch(e => console.error("Spin sound play failed:", e));
+            } else if (!soundsEnabled) { 
+                console.log("Sounds disabled by admin settings."); 
+            } else { 
+                console.warn("Spin sound not available."); 
+            }
+
+            rotateWheel();
+        } catch (error) {
+            console.error("Error inside spin() function:", error);
+            try {
+                const spinButton = document.getElementById("spin");
+                const canvasElement = document.getElementById("canvas");
+                if(spinButton) spinButton.disabled = false;
+                if(spinButton) spinButton.classList.remove("spinning");
+                if(canvasElement) canvasElement.classList.remove("spinning");
+            } catch (resetError) { console.error("Error resetting UI after spin start error:", resetError); }
+        }
+    }
+
+    /* ROTATION ANIMATION LOOP */
+    function rotateWheel() {
+        try {
+            spinTime += 30;
+            if (spinTime >= spinTimeTotal) {
+                stopRotateWheel();
+                return;
+            }
+            const spinAngle = spinAngleStart - easeOut(spinTime, 0, spinAngleStart, spinTimeTotal);
+            startAngle += (spinAngle * Math.PI / 180);
+            startAngle %= (Math.PI * 2);
+            drawRouletteWheel();
+            spinTimeout = setTimeout(rotateWheel, 30);
+        } catch (error) {
+            console.error("Error in rotateWheel:", error);
+             clearTimeout(spinTimeout);
+             const spinButton = document.getElementById("spin");
+             if(spinButton) spinButton.disabled = false;
+        }
+    }
+
+    /* STOP ROTATION AND DETERMINE WINNER */
+    function stopRotateWheel() {
+       let spinButton = document.getElementById("spin");
+       let canvasElement = document.getElementById("canvas");
+        try {
+            clearTimeout(spinTimeout);
+            if (spinSound) { spinSound.pause(); spinSound.currentTime = 0; }
+
+            const degrees = (startAngle * 180 / Math.PI) % 360;
+            const arcDegrees = arc * 180 / Math.PI;
+            if (!arcDegrees || isNaN(arcDegrees) || arcDegrees === 0) { throw new Error(`Invalid arcDegrees: ${arcDegrees}`); }
+
+            const correctedDegrees = (360 - degrees + 270) % 360;
+            const index = Math.floor(correctedDegrees / arcDegrees) % window.segments.length;
+            if (isNaN(index) || index < 0 || index >= window.segments.length) { throw new Error(`Invalid segment index: ${index}`); }
+
+            const result = window.segments[index];
+            const outcome = window.outcomes[index] || 'fail'; // Default to fail if no outcome set
+
+            // Check admin settings for confetti and sounds
+            const confettiEnabled = localStorage.getItem('wheelEnableConfetti') !== 'false';
+            const soundsEnabled = localStorage.getItem('wheelEnableSounds') !== 'false';
+
+            // Determine result based on outcome type
+            if (outcome === 'prize') {
+                document.getElementById("modalHeader").innerText = "🏆 WINNER!";
+                showModal(`Congratulations!<br>You won a ${result}`);
+                if (soundsEnabled && winSound) winSound.play().catch(e => console.error("Win sound play failed:", e));
+                if (confettiEnabled) triggerPrizeConfetti(); // Enhanced confetti for prizes
+            } else if (outcome === 'fitsmiles') {
+                document.getElementById("modalHeader").innerText = "💰 CONGRATS!";
+                showModal(`You earned ${result}`);
+                if (soundsEnabled && winSound) winSound.play().catch(e => console.error("Win sound play failed:", e));
+                if (confettiEnabled) triggerConfetti(); // Regular confetti for Fitsmiles
+            } else { // outcome === 'fail'
+                document.getElementById("modalHeader").innerText = "🥺 Oh Noo!";
+                showModal("Better luck next time!");
+                if (soundsEnabled && lostSound) {
+                    lostSound.play().catch(e => console.error("Lost sound play failed:", e));
+                }
+            }
+
+        } catch (error) {
+           console.error("Error in stopRotateWheel:", error);
+           showModal("Oops! Something went wrong processing the result.");
+        } finally {
+            setTimeout(() => {
+                if(spinButton) spinButton.disabled = false;
+                if(spinButton) spinButton.classList.remove("spinning");
+                if(canvasElement) canvasElement.classList.remove("spinning");
+            }, 500);
+        }
+    }
+    /* Easing function (Cubic ease-out) */
+    function easeOut(t, b, c, d) { const ts = (t/=d)*t; const tc = ts*t; return b+c*(tc + -3*ts + 3*t); }
+    /* Modal Functions */
+    function showModal(message) {
+    document.getElementById("winnerText").innerHTML = message;
+    document.getElementById("modal").style.display = "flex";
+    }   
+
+    function closeModal() { document.getElementById("modal").style.display = "none"; }
+    /* Confetti Function */
+    function triggerConfetti() {
+        // Floaty, capped at ~1.5s emission, longer fade per burst
+        const duration = 1.5 * 1000;
+        const animationEnd = Date.now() + duration;
+        const defaults = { startVelocity: 26, spread: 190, ticks: 160, gravity: 0.50, decay: 0.965, scalar: 0.9, zIndex: 2000 };
+        const phi = 0.61803398875; // golden ratio conjugate for even coverage
+        let step = 0;
+        const interval = setInterval(function () {
+            const timeLeft = animationEnd - Date.now();
+            if (timeLeft <= 0) { return clearInterval(interval); }
+            const factor = timeLeft / duration;
+            const base = Math.max(12, Math.floor(20 * factor));
+
+            // Two distributed bursts (upper/mid)
+            const x1 = 0.12 + ((step * phi) % 0.76);          // 0.12 .. 0.88
+            const y1 = 0.12 + (((step * phi * 1.2) % 0.38));  // 0.12 .. 0.50
+            const x2 = 0.88 - ((step * phi * 0.7) % 0.76);    // mirrored
+            const y2 = 0.20 + (((step * phi * 1.05) % 0.40)); // 0.20 .. 0.60
+
+            confetti(Object.assign({}, defaults, {
+                particleCount: base,
+                origin: { x: x1, y: y1 },
+                drift: (Math.random() - 0.5) * 0.6,
+                angle: 80 + (step * 17 % 20) // 80..100
+            }));
+
+            confetti(Object.assign({}, defaults, {
+                particleCount: Math.max(9, Math.floor(base * 0.85)),
+                origin: { x: x2, y: y2 },
+                drift: (Math.random() - 0.5) * 0.6,
+                angle: 100 - (step * 19 % 20) // 80..100
+            }));
+
+            // One bottom-focused burst per tick
+            const xBtm = 0.12 + ((step * phi * 0.9) % 0.76);  // 0.12 .. 0.88
+            const yBtm = 0.80 + ((step * phi * 0.3) % 0.15);  // 0.80 .. 0.95
+            confetti(Object.assign({}, defaults, {
+                particleCount: Math.max(10, Math.floor(base * 0.9)),
+                origin: { x: xBtm, y: yBtm },
+                drift: (Math.random() - 0.5) * 0.5,
+                angle: 88 + (step * 13 % 8) // slight upward from bottom
+            }));
+
+            step++;
+        }, 300);
+    }
+
+    /* Confetti for Prize Wins (distributed, slightly more bursts, longer fade) */
+    function triggerPrizeConfetti() {
+        // Cap emission to ~1.5s
+        const duration = 1.5 * 1000;
+        const animationEnd = Date.now() + duration;
+        const defaults = { startVelocity: 32, spread: 240, ticks: 175, gravity: 0.48, decay: 0.965, scalar: 1, zIndex: 2000 };
+        const colors = ['#FFD700', '#FFA500', '#FF4D4D', '#FF1493', '#00CED1'];
+        const phi = 0.61803398875;
+        let step = 0;
+        const interval = setInterval(function () {
+            const timeLeft = animationEnd - Date.now();
+            if (timeLeft <= 0) { return clearInterval(interval); }
+            const factor = timeLeft / duration;
+            const base = Math.max(14, Math.floor(28 * factor));
+
+            // Upper burst
+            const xA = 0.12 + ((step * phi) % 0.76);                 // 0.12 .. 0.88
+            const yA = 0.10 + (((step * phi * 1.2) % 0.35));         // 0.10 .. 0.45
+            // Mid burst
+            const xB = 0.88 - ((step * phi * 0.8) % 0.76);           // mirrored
+            const yB = 0.35 + (((step * phi * 1.05) % 0.35));        // 0.35 .. 0.70
+            // Sweeping burst
+            const xC = 0.5 + Math.sin(step * 0.8) * 0.35;            // -0.35..0.35 offset
+            const yC = 0.25 + (Math.cos(step * 0.65) * 0.15 + 0.15); // 0.25..0.55
+            // Bottom burst
+            const xD = 0.12 + ((step * phi * 0.9) % 0.76);           // 0.12 .. 0.88
+            const yD = 0.82 + ((step * phi * 0.35) % 0.13);          // 0.82 .. 0.95
+
+            confetti(Object.assign({}, defaults, {
+                particleCount: base,
+                origin: { x: xA, y: yA },
+                colors,
+                drift: (Math.random() - 0.5) * 0.6,
+                angle: 80 + (step * 23 % 20)
+            }));
+
+            confetti(Object.assign({}, defaults, {
+                particleCount: Math.max(11, Math.floor(base * 0.8)),
+                origin: { x: xB, y: yB },
+                colors,
+                drift: (Math.random() - 0.5) * 0.6,
+                angle: 100 - (step * 21 % 20)
+            }));
+
+            confetti(Object.assign({}, defaults, {
+                particleCount: Math.max(10, Math.floor(base * 0.7)),
+                origin: { x: xC, y: yC },
+                colors,
+                drift: (Math.random() - 0.5) * 0.6,
+                angle: 85 + (step * 15 % 10)
+            }));
+
+            confetti(Object.assign({}, defaults, {
+                particleCount: Math.max(11, Math.floor(base * 0.7)),
+                origin: { x: xD, y: yD },
+                colors,
+                drift: (Math.random() - 0.5) * 0.5,
+                angle: 88 + (step * 11 % 8) // gentle upward from bottom
+            }));
+
+            step++;
+        }, 300);
+    }
+
+    // --- Fullscreen API Logic ---
+    const enterFullscreenIcon = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><path d="M1.5 1a.5.5 0 0 0-.5.5v4a.5.5 0 0 1-1 0v-4A1.5 1.5 0 0 1 1.5 0h4a.5.5 0 0 1 0 1zM10 .5a.5.5 0 0 1 .5-.5h4A1.5 1.5 0 0 1 16 1.5v4a.5.5 0 0 1-1 0v-4a.5.5 0 0 0-.5-.5h-4a.5.5 0 0 1-.5-.5M.5 10a.5.5 0 0 1 .5.5v4a.5.5 0 0 0 .5.5h4a.5.5 0 0 1 0 1h-4A1.5 1.5 0 0 1 0 14.5v-4a.5.5 0 0 1 .5-.5m15 0a.5.5 0 0 1 .5.5v4a1.5 1.5 0 0 1-1.5 1.5h-4a.5.5 0 0 1 0-1h4a.5.5 0 0 0 .5-.5v-4a.5.5 0 0 1 .5-.5"/></svg>`;
+    const exitFullscreenIcon = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><path d="M5.5 0a.5.5 0 0 1 .5.5v4A1.5 1.5 0 0 1 4.5 6h-4a.5.5 0 0 1 0-1h4a.5.5 0 0 0 .5-.5v-4a.5.5 0 0 1 .5-.5m5 0a.5.5 0 0 1 .5.5v4a.5.5 0 0 0 .5.5h4a.5.5 0 0 1 0 1h-4A1.5 1.5 0 0 1 10 4.5v-4a.5.5 0 0 1 .5-.5M0 10.5a.5.5 0 0 1 .5-.5h4a.5.5 0 0 0 .5.5v4a.5.5 0 0 1-.5.5h-4a.5.5 0 0 1-.5-.5v-4a.5.5 0 0 1 0-1m10.5 1a.5.5 0 0 0-.5.5v4a.5.5 0 0 0 .5.5h4a.5.5 0 0 0 .5-.5v-4a.5.5 0 0 0-.5-.5z"/></svg>`;
+    function updateFullscreenButton() {
+        const isFullscreen = document.fullscreenElement || document.webkitFullscreenElement || document.msFullscreenElement;
+        fullscreenBtn.innerHTML = isFullscreen ? exitFullscreenIcon : enterFullscreenIcon;
+    }
+    function toggleFullScreen() {
+        const isFullscreen = document.fullscreenElement || document.webkitFullscreenElement || document.msFullscreenElement;
+        if (!isFullscreen) {
+            if (elem.requestFullscreen) { elem.requestFullscreen(); }
+            else if (elem.webkitRequestFullscreen) { elem.webkitRequestFullscreen(); }
+            else if (elem.msRequestFullscreen) { elem.msRequestFullscreen(); }
+        } else {
+            if (document.exitFullscreen) { document.exitFullscreen(); }
+            else if (document.webkitExitFullscreen) { document.webkitExitFullscreen(); }
+            else if (document.msExitFullscreen) { document.msExitFullscreen(); }
+        }
+    }
+
+    // --- App Initialization ---
+    function initializeApp() {
+        try { 
+          // Load custom title and org name
+          const customTitle = localStorage.getItem('wheelTitle');
+          if (customTitle) {
+            document.getElementById('wheelTitle').textContent = customTitle;
+            document.title = 'Fitsmiles ' + customTitle;
+          }
+          
+          updateCanvasSize(); 
+        } catch(e) { 
+          console.error("Error during initial app initialization:", e); 
+        }
+    }
+
+    // --- Event Listeners Setup ---
+    function setupEventListeners() {
+        try {
+            const spinBtn = document.getElementById("spin");
+            const closeBtn = document.getElementById("close");
+            const modalEl = document.getElementById("modal");
+            if (spinBtn) spinBtn.addEventListener("click", spin); else console.error("Spin button not found");
+            if (closeBtn) closeBtn.addEventListener("click", closeModal); else console.error("Close button not found");
+            if (modalEl) window.addEventListener("click", function(event) { if (event.target === modalEl) { closeModal(); } }); else console.error("Modal element not found");
+
+            let resizeTimeout;
+            function debouncedUpdate() { clearTimeout(resizeTimeout); resizeTimeout = setTimeout(updateCanvasSize, 150); }
+            window.addEventListener("resize", debouncedUpdate);
+            document.addEventListener('fullscreenchange', debouncedUpdate);
+            document.addEventListener('webkitfullscreenchange', debouncedUpdate);
+            document.addEventListener('msfullscreenchange', debouncedUpdate);
+
+            if (fullscreenBtn) {
+                const fsEnabled = document.fullscreenEnabled || document.webkitFullscreenEnabled || document.msFullscreenEnabled;
+                if (fsEnabled) {
+                    fullscreenBtn.addEventListener('click', toggleFullScreen);
+                    document.addEventListener('fullscreenchange', updateFullscreenButton);
+                    document.addEventListener('webkitfullscreenchange', updateFullscreenButton);
+                    document.addEventListener('msfullscreenchange', updateFullscreenButton);
+                    updateFullscreenButton();
+                } else { fullscreenBtn.style.display = 'none'; console.warn("Fullscreen API not supported."); }
+            } else { console.error("Fullscreen button not found during listener setup."); }
+        } catch (e) { console.error("Error setting up event listeners:", e); }
+    }
+
+    // --- Start the App ---
+    setupEventListeners();
+    Promise.race([
+        document.fonts.ready,
+        new Promise(resolve => setTimeout(resolve, 500))
+    ]).then(() => {
+        initializeApp();
+    }).catch(error => {
+        console.error("Font loading error or timeout:", error);
+        initializeApp();
+    });
+
+  </script>
+</body>
+</html>
